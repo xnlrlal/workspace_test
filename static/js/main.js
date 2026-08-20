@@ -23,7 +23,12 @@ const PLOTLY_BASE_LAYOUT = {
   yaxis: { gridcolor: COLORS.line, zerolinecolor: COLORS.line },
   showlegend: false,
   hovermode: "x unified",
+  // 드래그로 확대/축소하는 상호작용을 꺼서, 모바일에서 페이지를 스크롤하려고
+  // 차트 위를 손가락으로 쓸어넘길 때 확대 제스처로 오인식되지 않게 한다.
+  dragmode: false,
 };
+
+const PLOTLY_CONFIG = { displayModeBar: false, responsive: true, scrollZoom: false };
 
 const daysRange = document.getElementById("days-range");
 const daysValue = document.getElementById("days-value");
@@ -299,7 +304,7 @@ function renderPriceChart(data) {
     "price-chart",
     [forecastFan, candlestick, sma20, sma60, forecastMean],
     layout,
-    { displayModeBar: false, responsive: true }
+    PLOTLY_CONFIG
   );
 }
 
@@ -326,7 +331,7 @@ function renderRSI(data) {
     ],
   };
 
-  Plotly.newPlot("rsi-chart", [trace], layout, { displayModeBar: false, responsive: true });
+  Plotly.newPlot("rsi-chart", [trace], layout, PLOTLY_CONFIG);
 }
 
 function renderMACD(data) {
@@ -359,10 +364,7 @@ function renderMACD(data) {
     line: { color: COLORS.forecast, width: 1.3 },
   };
 
-  Plotly.newPlot("macd-chart", [bar, macdLine, signalLine], PLOTLY_BASE_LAYOUT, {
-    displayModeBar: false,
-    responsive: true,
-  });
+  Plotly.newPlot("macd-chart", [bar, macdLine, signalLine], PLOTLY_BASE_LAYOUT, PLOTLY_CONFIG);
 }
 
 function renderAnalog(data) {
