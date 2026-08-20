@@ -37,15 +37,27 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _fit_kwargs():
+    # statsmodels가 fit() 내부에서 method_kwargs 딕셔너리를 직접 변형하므로,
+    # 호출마다 새 딕셔너리를 만들어야 한다 (공유 객체를 재사용하면 두 번째
+    # 호출부터 이전 fit이 채워넣은 키와 충돌해 ValueError가 난다).
+    return dict(method_kwargs={"maxiter": 50}, low_memory=True)
+
+
 def _select_order(series: pd.Series):
-    """AIC 기준으로 (p,d,q) 조합 중 가장 적합한 것을 간단히 탐색"""
+    """AIC 기준으로 (p,d,q) 조합 중 가장 적합한 것을 간단히 탐색
+
+    그리드를 넓게 돌리면 정확도는 조금 오르지만 저사양 서버(Render 무료 티어 등)에서
+    gunicorn 워커 타임아웃을 유발할 만큼 느려서, 실용적인 범위로 좁히고 옵티마이저
+    반복 횟수도 제한한다.
+    """
     best_aic = np.inf
     best_order = (1, 1, 0)
-    for p, d, q in product(range(0, 4), range(0, 2), range(0, 3)):
+    for p, d, q in product(range(0, 3), range(0, 2), range(0, 3)):
         if p == 0 and q == 0:
             continue
         try:
-            fitted = ARIMA(series, order=(p, d, q)).fit()
+            fitted = ARIMA(series, order=(p, d, q)).fit(**_fit_kwargs())
             if fitted.aic < best_aic:
                 best_aic = fitted.aic
                 best_order = (p, d, q)
@@ -66,7 +78,7 @@ def forecast_prices(df: pd.DataFrame, horizon: int = 30) -> dict:
     log_close = np.log(close)
     order = _select_order(log_close)
 
-    fitted = ARIMA(log_close, order=order).fit()
+    fitted = ARIMA(log_close, order=order).fit(**_fit_kwargs())
     result = fitted.get_forecast(steps=horizon)
 
     mean_fc = np.exp(result.predicted_mean)
