@@ -1,6 +1,8 @@
 """
 주가 과거 데이터 기반 예측 대시보드 - Flask 백엔드
 """
+import time
+
 import pandas as pd
 from flask import Flask, jsonify, render_template, request
 
@@ -9,6 +11,32 @@ from services.data_fetcher import fetch_history
 from services.predictor import compute_indicators, forecast_prices
 
 app = Flask(__name__)
+
+# ARIMA 그리드서치가 비용이 커서(Render 무료 티어에서는 수십 초 단위), 같은
+# (종목, 기간) 조합을 짧은 시간 안에 반복 요청하면(새로고침, 모바일 재방문 등)
+# 재계산하지 않고 캐시된 응답을 돌려준다. 워커 프로세스 메모리에만 유지되는
+# 캐시라 재배포/재시작 시 비워지는 건 감수한다.
+_RESPONSE_CACHE = {}
+_CACHE_TTL_SEC = 600
+_CACHE_MAX_ENTRIES = 30
+
+
+def _get_cached_response(key):
+    entry = _RESPONSE_CACHE.get(key)
+    if entry is None:
+        return None
+    cached_at, payload = entry
+    if time.monotonic() - cached_at > _CACHE_TTL_SEC:
+        del _RESPONSE_CACHE[key]
+        return None
+    return payload
+
+
+def _set_cached_response(key, payload):
+    if len(_RESPONSE_CACHE) >= _CACHE_MAX_ENTRIES:
+        oldest_key = min(_RESPONSE_CACHE, key=lambda k: _RESPONSE_CACHE[k][0])
+        del _RESPONSE_CACHE[oldest_key]
+    _RESPONSE_CACHE[key] = (time.monotonic(), payload)
 
 
 def _col_to_list(df: pd.DataFrame, col: str):
@@ -27,6 +55,11 @@ def api_stock(ticker):
     days = int(request.args.get("days", 365))
     horizon = int(request.args.get("horizon", 30))
     horizon = max(5, min(horizon, 90))  # 5~90일 범위로 제한
+
+    cache_key = (ticker, days, horizon)
+    cached = _get_cached_response(cache_key)
+    if cached is not None:
+        return jsonify(cached)
 
     try:
         df, market, name = fetch_history(ticker, period_days=days)
@@ -74,18 +107,18 @@ def api_stock(ticker):
     prev_close = float(df["Close"].iloc[-2]) if len(df) > 1 else last_close
     change_pct = round((last_close - prev_close) / prev_close * 100, 2) if prev_close else 0.0
 
-    return jsonify(
-        {
-            "ticker": ticker,
-            "name": name,
-            "market": market,
-            "last_close": round(last_close, 2),
-            "change_pct": change_pct,
-            "history": history,
-            "forecast": forecast,
-            "analog": analog,
-        }
-    )
+    payload = {
+        "ticker": ticker,
+        "name": name,
+        "market": market,
+        "last_close": round(last_close, 2),
+        "change_pct": change_pct,
+        "history": history,
+        "forecast": forecast,
+        "analog": analog,
+    }
+    _set_cached_response(cache_key, payload)
+    return jsonify(payload)
 
 
 if __name__ == "__main__":

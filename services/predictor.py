@@ -1,6 +1,7 @@
 """
 기술적 지표 계산 + ARIMA 기반 단기 가격 예측
 """
+import time
 import warnings
 from itertools import product
 
@@ -37,25 +38,33 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+_GRID_SEARCH_TIME_BUDGET_SEC = 40  # 그리드서치 전체에 허용하는 최대 시간(벽시계 기준)
+
+
 def _fit_kwargs():
     # statsmodels가 fit() 내부에서 method_kwargs 딕셔너리를 직접 변형하므로,
     # 호출마다 새 딕셔너리를 만들어야 한다 (공유 객체를 재사용하면 두 번째
     # 호출부터 이전 fit이 채워넣은 키와 충돌해 ValueError가 난다).
-    return dict(method_kwargs={"maxiter": 50}, low_memory=True)
+    return dict(method_kwargs={"maxiter": 30}, low_memory=True)
 
 
 def _select_order(series: pd.Series):
     """AIC 기준으로 (p,d,q) 조합 중 가장 적합한 것을 간단히 탐색
 
-    그리드를 넓게 돌리면 정확도는 조금 오르지만 저사양 서버(Render 무료 티어 등)에서
-    gunicorn 워커 타임아웃을 유발할 만큼 느려서, 실용적인 범위로 좁히고 옵티마이저
-    반복 횟수도 제한한다.
+    maxiter를 제한해도 Render 무료 티어처럼 CPU가 매우 느리거나 스로틀링되는
+    환경에서는 조합 하나하나가 여전히 오래 걸려 gunicorn 워커가 타임아웃으로
+    죽는 사례가 있었다 (SIGABRT 트레이스백이 커널만 필터 loglike 안에서 찍힘).
+    maxiter/그리드 크기만으로는 worst-case를 보장할 수 없으므로, 벽시계 기준
+    시간 예산을 두고 예산을 넘기면 그 시점까지 찾은 최선의 order로 즉시 중단한다.
     """
     best_aic = np.inf
     best_order = (1, 1, 0)
+    deadline = time.monotonic() + _GRID_SEARCH_TIME_BUDGET_SEC
     for p, d, q in product(range(0, 3), range(0, 2), range(0, 3)):
         if p == 0 and q == 0:
             continue
+        if time.monotonic() >= deadline:
+            break
         try:
             fitted = ARIMA(series, order=(p, d, q)).fit(**_fit_kwargs())
             if fitted.aic < best_aic:
