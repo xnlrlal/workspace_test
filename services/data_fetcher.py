@@ -10,6 +10,8 @@ import pandas as pd
 
 _KR_TICKER_RE = re.compile(r"^\d{6}$")
 
+_krx_listing_cache = None
+
 
 def is_kr_ticker(ticker: str) -> bool:
     """국내 종목코드(6자리 숫자) 여부 판별"""
@@ -45,8 +47,10 @@ def fetch_history(ticker: str, period_days: int = 365):
 
         name = ticker
         try:
-            listing = fdr.StockListing("KRX")
-            match = listing[listing["Code"] == ticker]
+            global _krx_listing_cache
+            if _krx_listing_cache is None:
+                _krx_listing_cache = fdr.StockListing("KRX")
+            match = _krx_listing_cache[_krx_listing_cache["Code"] == ticker]
             if not match.empty:
                 name = match.iloc[0]["Name"]
         except Exception:

@@ -36,14 +36,23 @@ def api_stock(ticker):
     if df is None or df.empty:
         return jsonify({"error": f'"{ticker}" 종목 데이터를 찾을 수 없습니다.'}), 404
 
-    df = compute_indicators(df)
+    try:
+        df = compute_indicators(df)
+    except Exception as e:
+        app.logger.exception("지표 계산 실패")
+        return jsonify({"error": f"지표 계산 중 오류가 발생했습니다: {e}"}), 500
 
     try:
         forecast = forecast_prices(df, horizon=horizon)
     except Exception as e:
+        app.logger.exception("예측 계산 실패")
         return jsonify({"error": f"예측 계산 중 오류가 발생했습니다: {e}"}), 500
 
-    analog = find_analogs(df, window=20, forward=horizon)
+    try:
+        analog = find_analogs(df, window=20, forward=horizon)
+    except Exception as e:
+        app.logger.exception("유사 패턴 분석 실패")
+        return jsonify({"error": f"유사 패턴 분석 중 오류가 발생했습니다: {e}"}), 500
 
     history = {
         "dates": [d.strftime("%Y-%m-%d") for d in df.index],
