@@ -32,16 +32,11 @@ const horizonValue = document.getElementById("horizon-value");
 const tickerInput = document.getElementById("ticker-input");
 const searchForm = document.getElementById("search-form");
 const statusBanner = document.getElementById("status-banner");
+const watchlistChips = document.getElementById("watchlist-chips");
+const watchlistStar = document.getElementById("watchlist-star");
 
 daysRange.addEventListener("input", () => (daysValue.textContent = daysRange.value));
 horizonRange.addEventListener("input", () => (horizonValue.textContent = horizonRange.value));
-
-document.querySelectorAll(".chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    tickerInput.value = chip.dataset.ticker;
-    loadStock();
-  });
-});
 
 searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -50,6 +45,109 @@ searchForm.addEventListener("submit", (e) => {
 
 daysRange.addEventListener("change", loadStock);
 horizonRange.addEventListener("change", loadStock);
+
+/* ---------- 워치리스트 (브라우저 로컬스토리지 저장) ---------- */
+
+const WATCHLIST_KEY = "signal.watchlist";
+const DEFAULT_WATCHLIST = [
+  { ticker: "005930", name: "삼성전자" },
+  { ticker: "000660", name: "SK하이닉스" },
+  { ticker: "373220", name: "LG에너지솔루션" },
+  { ticker: "AAPL", name: "Apple" },
+  { ticker: "NVDA", name: "NVIDIA" },
+  { ticker: "TSLA", name: "Tesla" },
+];
+
+function loadWatchlist() {
+  try {
+    const raw = localStorage.getItem(WATCHLIST_KEY);
+    if (raw === null) return DEFAULT_WATCHLIST.slice();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return DEFAULT_WATCHLIST.slice();
+  }
+}
+
+function saveWatchlist(list) {
+  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(list));
+}
+
+function isInWatchlist(ticker) {
+  return loadWatchlist().some((item) => item.ticker === ticker);
+}
+
+function addToWatchlist(ticker, name) {
+  const list = loadWatchlist();
+  if (list.some((item) => item.ticker === ticker)) return;
+  list.push({ ticker, name });
+  saveWatchlist(list);
+  renderWatchlist();
+}
+
+function removeFromWatchlist(ticker) {
+  const list = loadWatchlist().filter((item) => item.ticker !== ticker);
+  saveWatchlist(list);
+  renderWatchlist();
+  updateWatchlistStar(tickerInput.value.trim());
+}
+
+function renderWatchlist() {
+  const list = loadWatchlist();
+  watchlistChips.innerHTML = "";
+
+  if (list.length === 0) {
+    watchlistChips.innerHTML = '<p class="chips-empty">관심종목이 없습니다. ☆ 버튼으로 추가해보세요.</p>';
+    return;
+  }
+
+  list.forEach((item) => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.dataset.ticker = item.ticker;
+
+    const label = document.createElement("span");
+    label.textContent = `${item.ticker} · ${item.name}`;
+    chip.appendChild(label);
+
+    const remove = document.createElement("span");
+    remove.className = "chip-remove";
+    remove.textContent = "×";
+    remove.title = "워치리스트에서 삭제";
+    remove.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeFromWatchlist(item.ticker);
+    });
+    chip.appendChild(remove);
+
+    chip.addEventListener("click", () => {
+      tickerInput.value = item.ticker;
+      loadStock();
+    });
+
+    watchlistChips.appendChild(chip);
+  });
+}
+
+function updateWatchlistStar(ticker) {
+  const active = isInWatchlist(ticker);
+  watchlistStar.textContent = active ? "★" : "☆";
+  watchlistStar.classList.toggle("active", active);
+  watchlistStar.setAttribute("aria-pressed", String(active));
+}
+
+watchlistStar.addEventListener("click", () => {
+  if (!currentStockData) return;
+  const { ticker, name } = currentStockData;
+
+  if (isInWatchlist(ticker)) {
+    removeFromWatchlist(ticker);
+  } else {
+    addToWatchlist(ticker, name);
+  }
+  updateWatchlistStar(ticker);
+});
 
 function setStatus(msg, isError = false) {
   if (!msg) {
@@ -91,7 +189,10 @@ async function loadStock() {
   }
 }
 
+let currentStockData = null;
+
 function renderHeader(data) {
+  currentStockData = { ticker: data.ticker, name: data.name };
   document.getElementById("stock-name").textContent = `${data.name} (${data.ticker})`;
   document.getElementById("market-badge").textContent = data.market === "KR" ? "국내" : "해외";
   document.getElementById("last-price").textContent = data.last_close.toLocaleString();
@@ -100,6 +201,8 @@ function renderHeader(data) {
   const sign = data.change_pct >= 0 ? "+" : "";
   badge.textContent = `${sign}${data.change_pct}%`;
   badge.className = "change-badge " + (data.change_pct >= 0 ? "up" : "down");
+
+  updateWatchlistStar(data.ticker);
 }
 
 function renderPriceChart(data) {
@@ -319,4 +422,5 @@ function renderAnalog(data) {
 }
 
 // 초기 로드
+renderWatchlist();
 loadStock();

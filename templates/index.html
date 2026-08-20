@@ -30,14 +30,7 @@
 
     <div class="watchlist">
       <span class="section-label">바로가기</span>
-      <div class="chips" id="watchlist-chips">
-        <button class="chip" data-ticker="005930">005930 · 삼성전자</button>
-        <button class="chip" data-ticker="000660">000660 · SK하이닉스</button>
-        <button class="chip" data-ticker="373220">373220 · LG에너지솔루션</button>
-        <button class="chip" data-ticker="AAPL">AAPL · Apple</button>
-        <button class="chip" data-ticker="NVDA">NVDA · NVIDIA</button>
-        <button class="chip" data-ticker="TSLA">TSLA · Tesla</button>
-      </div>
+      <div class="chips" id="watchlist-chips"></div>
     </div>
 
     <div class="controls-block">
@@ -64,6 +57,7 @@
       <div class="stock-id">
         <h1 id="stock-name">불러오는 중…</h1>
         <span class="market-badge" id="market-badge">--</span>
+        <button class="watchlist-star" id="watchlist-star" type="button" title="관심종목에 추가/삭제" aria-pressed="false">☆</button>
       </div>
       <div class="price-block">
         <span class="price" id="last-price">--</span>

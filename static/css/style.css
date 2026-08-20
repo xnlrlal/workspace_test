@@ -157,12 +157,15 @@ button, input {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   color: var(--ink-dim);
   font-size: 11.5px;
   font-family: var(--font-mono);
-  padding: 6px 9px;
+  padding: 6px 8px 6px 9px;
   border-radius: 6px;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
@@ -171,6 +174,22 @@ button, input {
 .chip:hover {
   border-color: var(--forecast);
   color: var(--ink);
+}
+
+.chip-remove {
+  color: var(--ink-faint);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 1px;
+}
+
+.chip-remove:hover {
+  color: var(--up);
+}
+
+.chips-empty {
+  font-size: 11.5px;
+  color: var(--ink-faint);
 }
 
 .controls-block {
@@ -249,6 +268,28 @@ input[type="range"]::-webkit-slider-thumb {
   border: 1px solid var(--line);
   color: var(--ink-dim);
   letter-spacing: 0.05em;
+}
+
+.watchlist-star {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink-faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.watchlist-star:hover {
+  border-color: var(--forecast);
+  color: var(--forecast);
+}
+
+.watchlist-star.active {
+  color: var(--forecast);
+  border-color: var(--forecast);
 }
 
 .price-block {
