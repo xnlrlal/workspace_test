@@ -1,0 +1,6 @@
+Flask>=3.0
+pandas>=2.0
+numpy>=1.26
+statsmodels>=0.14
+finance-datareader>=0.9.50
+yfinance>=0.2.40

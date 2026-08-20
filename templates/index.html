@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시그널 — 주가 예측 대시보드</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.32.0/plotly.min.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="wordmark">
+      <span class="wordmark-dot"></span>
+      <span>시그널</span>
+    </div>
+    <p class="wordmark-sub">과거 데이터 기반 주가 추세 예측</p>
+
+    <form id="search-form" class="search-block" autocomplete="off">
+      <label for="ticker-input">종목 코드 / 티커</label>
+      <input id="ticker-input" type="text" placeholder="예: 005930, AAPL" value="005930">
+      <p class="hint">국내는 6자리 코드, 해외는 티커로 입력하세요</p>
+      <button type="submit">불러오기</button>
+    </form>
+
+    <div class="watchlist">
+      <span class="section-label">바로가기</span>
+      <div class="chips" id="watchlist-chips">
+        <button class="chip" data-ticker="005930">005930 · 삼성전자</button>
+        <button class="chip" data-ticker="000660">000660 · SK하이닉스</button>
+        <button class="chip" data-ticker="373220">373220 · LG에너지솔루션</button>
+        <button class="chip" data-ticker="AAPL">AAPL · Apple</button>
+        <button class="chip" data-ticker="NVDA">NVDA · NVIDIA</button>
+        <button class="chip" data-ticker="TSLA">TSLA · Tesla</button>
+      </div>
+    </div>
+
+    <div class="controls-block">
+      <span class="section-label">기간 설정</span>
+      <label class="range-label">
+        조회 기간 <span id="days-value">365</span>일
+        <input type="range" id="days-range" min="120" max="1095" step="15" value="365">
+      </label>
+      <label class="range-label">
+        예측 기간 <span id="horizon-value">30</span>거래일
+        <input type="range" id="horizon-range" min="5" max="90" step="5" value="30">
+      </label>
+    </div>
+
+    <div class="sidebar-footer">
+      <p>ARIMA 통계 모델 + 기술적 지표</p>
+      <p class="muted">데이터: FinanceDataReader · Yahoo Finance</p>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <header class="stock-header" id="stock-header">
+      <div class="stock-id">
+        <h1 id="stock-name">불러오는 중…</h1>
+        <span class="market-badge" id="market-badge">--</span>
+      </div>
+      <div class="price-block">
+        <span class="price" id="last-price">--</span>
+        <span class="change-badge" id="change-badge">--</span>
+      </div>
+    </header>
+
+    <section class="panel chart-panel">
+      <div class="panel-head">
+        <h2>가격 &amp; 예측</h2>
+        <div class="legend" id="chart-legend">
+          <span><i class="dot dot-up"></i>상승 캔들</span>
+          <span><i class="dot dot-down"></i>하락 캔들</span>
+          <span><i class="dot dot-sma20"></i>SMA20</span>
+          <span><i class="dot dot-sma60"></i>SMA60</span>
+          <span><i class="dot dot-forecast"></i>예측 구간</span>
+        </div>
+      </div>
+      <div id="price-chart" class="chart-tall"></div>
+    </section>
+
+    <section class="panel-row">
+      <div class="panel">
+        <div class="panel-head"><h2>RSI (14)</h2></div>
+        <div id="rsi-chart" class="chart-short"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>MACD</h2></div>
+        <div id="macd-chart" class="chart-short"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>과거 유사 패턴 통계</h2>
+        <span class="hint" id="analog-subtitle"></span>
+      </div>
+      <div id="analog-body" class="analog-body"></div>
+    </section>
+
+    <div class="disclaimer">
+      ⚠ 이 화면의 예측치는 과거 시세를 통계적으로 추정한 참고 자료이며, 투자 조언이나 미래 수익을 보장하지 않습니다. 투자 결정과 책임은 본인에게 있습니다.
+    </div>
+
+    <div id="status-banner" class="status-banner hidden"></div>
+
+  </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
