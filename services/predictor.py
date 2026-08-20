@@ -89,10 +89,15 @@ def forecast_prices(df: pd.DataFrame, horizon: int = 30) -> dict:
 
     lower_col, upper_col = conf.columns[0], conf.columns[1]
 
+    def _safe_round(values):
+        # NaN/inf는 표준 JSON에 없는 값이라 브라우저 JSON.parse가 실패한다
+        # (jsonify가 기본적으로 파이썬의 NaN 리터럴을 그대로 직렬화하기 때문).
+        return [None if not np.isfinite(v) else round(float(v), 2) for v in values]
+
     return {
         "order": list(order),
         "dates": [d.strftime("%Y-%m-%d") for d in future_dates],
-        "mean": [round(v, 2) for v in mean_fc.tolist()],
-        "lower": [round(v, 2) for v in conf[lower_col].tolist()],
-        "upper": [round(v, 2) for v in conf[upper_col].tolist()],
+        "mean": _safe_round(mean_fc.tolist()),
+        "lower": _safe_round(conf[lower_col].tolist()),
+        "upper": _safe_round(conf[upper_col].tolist()),
     }
